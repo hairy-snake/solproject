@@ -39,6 +39,20 @@ contract MultiSigWallet is Initializable, Ownable, UUPSUpgradeable {
         uint256 indexed transactionId
     );
 
+    modifier onlyOwner() {
+        require(isOwner(msg.sender), "Not an owner");
+        _;
+    }
+
+    function isOwner(address _owner) public view returns (bool) {
+        for (uint256 i = 0; i < owners.length; i++) {
+            if (owners[i] == _owner) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     function initialize(
         address[] memory _owners,
         uint256 _required
