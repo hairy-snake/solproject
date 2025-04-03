@@ -6,9 +6,10 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-contract MultiSigWallet is Initializable, Ownable, UUPSUpgradeable {
+contract MultiSigWallet is Initializable, OwnableUpgradeable, UUPSUpgradeable {
     address[] public owners;
     uint256 public required;
+    uint256 public transactionsCount;
 
     struct Tx {
         address to;
@@ -20,7 +21,7 @@ contract MultiSigWallet is Initializable, Ownable, UUPSUpgradeable {
     }
 
     mapping(uint256 => mapping(address => bool)) public isConfirmed;
-    Tx[] public txs;
+    mapping(uint256 => address) public txs;
 
     event Deposit(address indexed sender, uint256 amount);
     event SubmitTransaction(
@@ -89,20 +90,24 @@ contract MultiSigWallet is Initializable, Ownable, UUPSUpgradeable {
         uint256 _value,
         bytes memory _data
     ) public onlyOwner returns (uint256) {
-        uint256 transactionId = txs.length;
-        txs.push(
-            Tx({
-                to: _to,
-                value: _value,
-                data: _data,
-                executed: false,
-                numConfirmations: 0
-            })
+        txs[transactionsCount] = Tx({
+            to: _to,
+            value: _value,
+            data: _data,
+            executed: false,
+            numConfirmations: 0
+        });
+        transactionsCount++;
+
+        emit SubmitTransaction(
+            msg.sender,
+            transactionsCount - 1,
+            _to,
+            _value,
+            _data
         );
 
-        emit SubmitTransaction(msg.sender, transactionId, _to, _value, _data);
-
-        return transactionId;
+        return transactionsCount - 1;
     }
 
     function executeTransaction(uint256 _transactionId) public onlyOwner {
