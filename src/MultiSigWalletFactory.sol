@@ -2,13 +2,17 @@
 pragma solidity ^0.8.22;
 
 import "./MultiSigWallet.sol";
-
+import "./MicroProxy.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+
+interface IMultiSig {
+    function initialize(address[] memory _owners, uint256 _required) external;
+}
 
 contract MultiSigWalletFactory {
     event MultiSigWalletCreated(address indexed wallet);
 
-    address public walletImplementation;
+    address public immutable walletImplementation;
 
     constructor(address _walletImplementation) {
         require(
@@ -22,15 +26,12 @@ contract MultiSigWalletFactory {
         address[] memory _owners,
         uint _required
     ) public returns (address) {
-        ERC1967Proxy proxy = new ERC1967Proxy(
-            walletImplementation,
-            abi.encodeWithSignature(
-                "initialize(address[],uint256)",
-                _owners,
-                _required
-            )
+        bytes memory data = abi.encodeWithSignature(
+            "initialize(address[],uint256)",
+            _owners,
+            _required
         );
-
+        MicroProxy proxy = new MicroProxy(walletImplementation, data);
         emit MultiSigWalletCreated(address(proxy));
         return address(proxy);
     }

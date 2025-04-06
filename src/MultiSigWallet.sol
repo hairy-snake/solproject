@@ -17,10 +17,9 @@ contract MultiSigWallet is Initializable, UUPSUpgradeable, ReentrancyGuard {
         bytes data;
         bool executed;
         uint256 numConfirmations;
-        mapping(address => bool) confirmations;
     }
 
-    mapping(uint256 => mapping(address => bool)) public isConfirmed;
+    mapping(uint256 => mapping(address => bool)) public confirmations;
     mapping(uint256 => Tx) public txs;
 
     event Deposit(address indexed sender, uint256 amount);
@@ -40,7 +39,7 @@ contract MultiSigWallet is Initializable, UUPSUpgradeable, ReentrancyGuard {
         uint256 indexed transactionId
     );
 
-    modifier onlyOwner() {
+    modifier onlyOwnerMultisig() {
         require(isOwner(msg.sender), "Not an owner");
         _;
     }
@@ -71,12 +70,17 @@ contract MultiSigWallet is Initializable, UUPSUpgradeable, ReentrancyGuard {
         emit Deposit(msg.sender, msg.value);
     }
 
-    function confirmTransaction(uint256 _transactionId) public onlyOwner {
+    function confirmTransaction(
+        uint256 _transactionId
+    ) public onlyOwnerMultisig {
         Tx storage t = txs[_transactionId];
         require(!t.executed, "Transaction already executed");
-        require(!t.confirmations[msg.sender], "Transaction already confirmed");
+        require(
+            !confirmations[_transactionId][msg.sender],
+            "Transaction already confirmed"
+        );
 
-        t.confirmations[msg.sender] = true;
+        confirmations[_transactionId][msg.sender] = true;
         t.numConfirmations++;
 
         emit ConfirmTransaction(msg.sender, _transactionId);
@@ -86,7 +90,7 @@ contract MultiSigWallet is Initializable, UUPSUpgradeable, ReentrancyGuard {
         address _to,
         uint256 _value,
         bytes memory _data
-    ) public onlyOwner returns (uint256) {
+    ) public onlyOwnerMultisig returns (uint256) {
         txs[transactionsCount] = Tx({
             to: _to,
             value: _value,
@@ -107,7 +111,9 @@ contract MultiSigWallet is Initializable, UUPSUpgradeable, ReentrancyGuard {
         return transactionsCount - 1;
     }
 
-    function executeTransaction(uint256 _transactionId) public onlyOwner {
+    function executeTransaction(
+        uint256 _transactionId
+    ) public onlyOwnerMultisig nonReentrant {
         Tx storage t = txs[_transactionId];
         require(!t.executed, "Transaction already executed");
         require(t.numConfirmations >= required, "Not enough confirmations");
@@ -122,5 +128,5 @@ contract MultiSigWallet is Initializable, UUPSUpgradeable, ReentrancyGuard {
 
     function _authorizeUpgrade(
         address newImplementation
-    ) internal override onlyOwner {}
+    ) internal override onlyOwnerMultisig {}
 }
