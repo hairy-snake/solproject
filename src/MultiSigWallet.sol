@@ -2,12 +2,11 @@
 
 pragma solidity ^0.8.22;
 
-import "@openzeppelin/contracts/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-contract MultiSigWallet is Initializable, OwnableUpgradeable, UUPSUpgradeable, ReentrancyGuard {
+contract MultiSigWallet is Initializable, UUPSUpgradeable, ReentrancyGuard {
     address[] public owners;
     uint256 public required;
     uint256 public transactionsCount;
@@ -22,7 +21,7 @@ contract MultiSigWallet is Initializable, OwnableUpgradeable, UUPSUpgradeable, R
     }
 
     mapping(uint256 => mapping(address => bool)) public isConfirmed;
-    mapping(uint256 => address) public txs;
+    mapping(uint256 => Tx) public txs;
 
     event Deposit(address indexed sender, uint256 amount);
     event SubmitTransaction(
@@ -66,9 +65,6 @@ contract MultiSigWallet is Initializable, OwnableUpgradeable, UUPSUpgradeable, R
         );
         owners = _owners;
         required = _required;
-
-        __Ownable_init();
-        __UUPSUpgradeable_init();
     }
 
     receive() external payable {
